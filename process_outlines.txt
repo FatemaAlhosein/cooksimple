@@ -1,0 +1,299 @@
+🚀 1. Create React App (Vite – fast & modern)
+
+Run in terminal:
+
+npm create vite@latest cooksimple
+cd cooksimple
+npm install
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+🎨 2. Setup Tailwind
+tailwind.config.js
+export default {
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+src/index.css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+🧠 3. App Structure
+src/
+ ├── components/
+ │    ├── RecipeCard.jsx
+ │    ├── Pantry.jsx
+ │    ├── Planner.jsx
+ │    └── RecipeModal.jsx
+ ├── data/
+ │    └── recipes.js
+ ├── App.jsx
+ └── main.jsx
+🧪 4. Dummy Data
+src/data/recipes.js
+export const recipes = [
+  {
+    id: 1,
+    name: "Chicken Rice",
+    img: "https://images.unsplash.com/photo-1604908176997-4315c7e6a9e6",
+    ingredients: ["chicken", "rice", "yogurt"],
+    main: ["chicken", "rice"],
+    steps: ["Cook rice", "Cook chicken", "Mix"]
+  },
+  {
+    id: 2,
+    name: "Omelette",
+    img: "https://images.unsplash.com/photo-1585238342028-4c8c7d1fba03",
+    ingredients: ["egg", "milk", "salt"],
+    main: ["egg"],
+    steps: ["Beat eggs", "Cook", "Serve"]
+  },
+  {
+    id: 3,
+    name: "Pasta",
+    img: "https://images.unsplash.com/photo-1589302168068-964664d93dc0",
+    ingredients: ["pasta", "tomato", "garlic"],
+    main: ["pasta"],
+    steps: ["Boil", "Sauce", "Mix"]
+  }
+];
+🧩 5. Recipe Card Component
+components/RecipeCard.jsx
+export default function RecipeCard({ recipe, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      className="bg-white rounded-xl shadow hover:shadow-lg transition cursor-pointer"
+    >
+      <img src={recipe.img} className="h-40 w-full object-cover rounded-t-xl" />
+      <div className="p-3">
+        <h3 className="font-semibold">{recipe.name}</h3>
+        <p className="text-green-600 text-sm">{recipe.score}% match</p>
+      </div>
+    </div>
+  );
+}
+🍳 6. Main App
+App.jsx
+import { useState } from "react";
+import { recipes } from "./data/recipes";
+import RecipeCard from "./components/RecipeCard";
+
+export default function App() {
+  const [input, setInput] = useState("");
+  const [results, setResults] = useState([]);
+  const [pantry, setPantry] = useState([]);
+  const [tab, setTab] = useState("cook");
+
+  const search = () => {
+    const user = input.toLowerCase().split(",").map(i => i.trim());
+
+    let filtered = recipes.map(r => {
+      if (!r.main.every(m => user.includes(m))) return null;
+
+      let match = r.ingredients.filter(i => user.includes(i)).length;
+      return { ...r, score: Math.round(match / r.ingredients.length * 100) };
+    }).filter(Boolean).sort((a, b) => b.score - a.score);
+
+    setResults(filtered);
+  };
+
+  const addPantry = (val) => {
+    if (!val) return;
+    setPantry([...pantry, val.toLowerCase()]);
+  };
+
+  return (
+    <div className="bg-gray-100 min-h-screen">
+
+      {/* HEADER */}
+      <header className="bg-white p-4 shadow flex justify-between">
+        <h1 className="text-xl font-bold text-blue-600">CookSimple</h1>
+      </header>
+
+      {/* TABS */}
+      <div className="flex justify-center bg-white border-b">
+        {["cook","pantry","planner"].map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-5 py-3 ${tab===t ? "border-b-2 border-blue-500 font-semibold" : "text-gray-500"}`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="max-w-4xl mx-auto p-4">
+
+        {/* COOK TAB */}
+        {tab==="cook" && (
+          <>
+            <div className="flex gap-2 mb-4">
+              <input
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder="chicken, rice..."
+                className="flex-1 p-3 rounded-xl border"
+              />
+              <button
+                onClick={search}
+                className="bg-blue-600 text-white px-5 rounded-xl"
+              >
+                Find
+              </button>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              {results.map(r => (
+                <RecipeCard key={r.id} recipe={r} onClick={() => alert(r.name)} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* PANTRY TAB */}
+        {tab==="pantry" && (
+          <>
+            <h2 className="font-semibold mb-2">Pantry</h2>
+
+            <div className="flex gap-2 mb-3">
+              <input id="pInput" className="flex-1 p-2 border rounded" />
+              <button
+                onClick={() => {
+                  const val = document.getElementById("pInput").value;
+                  addPantry(val);
+                }}
+                className="bg-green-600 text-white px-3 rounded"
+              >
+                Add
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {pantry.map((p,i) => (
+                <span key={i} className="bg-green-100 px-3 py-1 rounded-full text-sm">
+                  {p}
+                </span>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                setInput(pantry.join(", "));
+                setTab("cook");
+              }}
+              className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-xl"
+            >
+              Use Pantry
+            </button>
+          </>
+        )}
+
+        {/* PLANNER */}
+        {tab==="planner" && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white p-4 rounded shadow">Mon → Chicken Rice</div>
+            <div className="bg-white p-4 rounded shadow">Tue → Omelette</div>
+            <div className="bg-white p-4 rounded shadow">Wed → Pasta</div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+▶️ 7. Run the app
+npm run dev
+------
+Now Django for Backend:
+🛠️ 1. Create virtual environment
+From your project root:
+python3 -m venv venv
+🛠️ 2. Activate it
+Mac/Linux:
+source venv/bin/activate
+🛠️ 3. Then install Django
+pip install django djangorestframework django-cors-headers
+4. Create Django project 
+django-admin startproject backend
+-----
+Let’s build the actual API that your React app will call:
+🚀 STEP 1: Create recipes app (if not already)
+
+Inside backend/:
+
+python manage.py startapp recipes
+🚀 STEP 2: Register app
+
+Open:
+
+👉 backend/settings.py
+Add:
+INSTALLED_APPS = [
+    ...
+    "rest_framework",
+    "corsheaders",
+    "recipes",
+]
+🚀 STEP 3: Enable CORS (important)
+Still in settings.py:
+MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    ...
+]
+CORS_ALLOW_ALL_ORIGINS = True
+🚀 STEP 4: Create simple API (Cook Now)
+update recipes/views.py
+STEP 5: Create URLs
+Create file: 👉 recipes/urls.py, Connect to main URLs Open: 👉 backend/urls.py then update it 
+now run the serevr and go to: http://127.0.0.1:8000/api/cook-now/
+Your API is:
+✅ Running
+✅ Connected correctly
+✅ Working as designed
+It’s just telling you:
+“I only accept POST, not GET”
+🧪 Let’s test it properly (from browser UI)
+Since you see the DRF interface:
+👉 Scroll down a little
+You should see a POST form
+Enter this:
+{
+  "ingredients": ["chicken", "rice"]
+}
+
+Now comes the exciting part:
+
+🔥 Connect React → Django
+🔧 STEP 1: Update click handler
+Open:
+👉 src/App.jsx
+Find where you render recipes (inside .map())
+Replace the onClick with this:
+onClick={async () => {
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/api/recipes/${r.id}/`);
+    const data = await res.json();
+    setSelected(data);
+  } catch (err) {
+    console.error(err);
+  }}}
+  🔧 STEP 2: Make sure modal uses backend data
+  🔧 STEP 3: Make sure search uses backend too
+
+Check your search() function:
+🧪 TEST FULL FLOW
+Run backend:
+python manage.py runserver
+Run frontend:
+npm run dev
+Database:
+1.Install MySQL
+2.Connect Django → MySQL
+3.Create Recipe model
+4.Migrate database
+5.Replace dummy data with real DB queries
+6.CREATE DATABASE cooksimple_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

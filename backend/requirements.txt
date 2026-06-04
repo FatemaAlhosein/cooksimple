@@ -1,0 +1,11 @@
+django>=4.2,<5.0
+djangorestframework
+django-cors-headers
+dj-database-url
+whitenoise
+gunicorn
+Pillow
+psycopg2-binary
+python-dotenv
+cloudinary
+django-cloudinary-storage

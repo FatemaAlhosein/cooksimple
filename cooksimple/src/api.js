@@ -1,5 +1,6 @@
 // Central API client. Points at the Django backend.
-const API_BASE = "http://127.0.0.1:8000/api";
+// In production, set VITE_API_BASE to your Render backend URL (e.g. https://cooksimple-api.onrender.com/api)
+const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api";
 
 export function getToken() {
   return localStorage.getItem("cs_token");

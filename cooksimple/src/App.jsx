@@ -92,6 +92,19 @@ function AuthModal({ onClose }) {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  const tryDemo = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      await login("demo", "demo1234");
+      onClose();
+    } catch {
+      setError("Demo account unavailable. Please try again shortly.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -144,6 +157,17 @@ function AuthModal({ onClose }) {
         <button type="submit" disabled={busy}
           className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all">
           {busy ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
+        </button>
+
+        <div className="relative flex items-center gap-2">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs text-slate-400">or</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+
+        <button type="button" onClick={tryDemo} disabled={busy}
+          className="w-full py-3 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 disabled:opacity-50 transition-all">
+          🎮 Try Demo Account
         </button>
 
         <p className="text-center text-sm text-slate-500">

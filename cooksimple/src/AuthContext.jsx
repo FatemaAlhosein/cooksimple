@@ -7,16 +7,32 @@ export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount, restore session from localStorage
+  // On mount, restore session from localStorage — or auto-login as demo
   useEffect(() => {
     const token = localStorage.getItem("cs_token");
     if (token) {
       getMe()
         .then(setUser)
-        .catch(() => localStorage.removeItem("cs_token"))
+        .catch(() => {
+          localStorage.removeItem("cs_token");
+          // Token was invalid — try demo login
+          return loginUser({ username: "demo", password: "demo1234" })
+            .then((data) => {
+              localStorage.setItem("cs_token", data.token);
+              setUser(data.user);
+            })
+            .catch(() => {});
+        })
         .finally(() => setLoading(false));
     } else {
-      setLoading(false);
+      // No token at all — auto-login as demo
+      loginUser({ username: "demo", password: "demo1234" })
+        .then((data) => {
+          localStorage.setItem("cs_token", data.token);
+          setUser(data.user);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
     }
   }, []);
 

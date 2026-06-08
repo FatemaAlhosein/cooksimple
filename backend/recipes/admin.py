@@ -19,17 +19,18 @@ class StepInline(admin.TabularInline):
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
     list_display = (
-        'name', 'thumbnail', 'cuisine', 'prep_time_minutes', 'cook_time_minutes',
+        'name', 'thumbnail', 'owner', 'cuisine', 'prep_time_minutes', 'cook_time_minutes',
         'is_vegetarian', 'is_vegan', 'is_gluten_free',
     )
     list_display_links = ('name',)
-    list_filter = ('cuisine', 'is_vegetarian', 'is_vegan', 'is_gluten_free')
+    list_filter = ('cuisine', 'is_vegetarian', 'is_vegan', 'is_gluten_free', 'owner')
     search_fields = ('name', 'description')
     inlines = [RecipeIngredientInline, StepInline]
     readonly_fields = ('thumbnail_preview',)
+    actions = ['make_public']
     fieldsets = (
         (None, {
-            'fields': ('name', 'description', 'cuisine', 'servings')
+            'fields': ('name', 'description', 'cuisine', 'servings', 'owner')
         }),
         ('Time', {
             'fields': ('prep_time_minutes', 'cook_time_minutes')
@@ -41,6 +42,11 @@ class RecipeAdmin(admin.ModelAdmin):
             'fields': ('image', 'thumbnail_preview', 'image_url')
         }),
     )
+
+    @admin.action(description='Make selected recipes public (remove owner)')
+    def make_public(self, request, queryset):
+        updated = queryset.update(owner=None)
+        self.message_user(request, f'{updated} recipe(s) marked as public.')
 
     def thumbnail(self, obj):
         if obj.image:

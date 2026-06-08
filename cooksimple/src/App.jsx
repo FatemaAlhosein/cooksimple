@@ -294,7 +294,15 @@ function CookTab({ onOpenRecipe, refreshKey, onGoKitchen, toast }) {
         setResults(suggestions);
         setHasPantry((pantry.results || pantry).length > 0);
       })
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (e.message.includes("401")) {
+          setError("Please log in to see recipe suggestions.");
+        } else if (e.message.includes("Failed to fetch")) {
+          setError("Could not connect to the server. Please try again.");
+        } else {
+          setError(e.message);
+        }
+      })
       .finally(() => setLoading(false));
   }, [JSON.stringify(filters), refreshKey]);
 
@@ -572,7 +580,10 @@ function RecipesTab({ onOpenRecipe, refreshKey }) {
     if (filters.diet)    params.diet    = filters.diet;
     if (search)          params.search  = search;
     if (mineOnly)        params.mine    = "1";
-    listRecipes(params).then((d) => setRecipes(d.results || d)).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    listRecipes(params).then((d) => setRecipes(d.results || d)).catch((e) => {
+      if (e.message.includes("Failed to fetch")) setError("Could not connect to the server. Please try again.");
+      else setError(e.message);
+    }).finally(() => setLoading(false));
   }, [JSON.stringify(filters), search, mineOnly, refreshKey]);
 
   const handleDelete = async (e, id) => {

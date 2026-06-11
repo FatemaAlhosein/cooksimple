@@ -553,7 +553,6 @@ function KitchenSection({ location, items, onRemove, onSaved, units }) {
 function KitchenRow({ item, onRemove, onSaved, units }) {
   const [qty, setQty]       = useState(item.quantity != null ? parseFloat(item.quantity) : "");
   const [minQty, setMinQty] = useState(item.min_quantity != null ? parseFloat(item.min_quantity) : "");
-  const [maxQty, setMaxQty] = useState(item.max_quantity != null ? parseFloat(item.max_quantity) : "");
   const [unitId, setUnitId] = useState(() => {
     const match = units.find((u) => u.name === item.unit_name || u.symbol === item.unit_symbol);
     return match ? String(match.id) : (units[0] ? String(units[0].id) : "");
@@ -574,7 +573,6 @@ function KitchenRow({ item, onRemove, onSaved, units }) {
       unit_input: selectedUnit?.symbol || selectedUnit?.name || "",
       location: loc,
       min_quantity: minQty !== "" ? Number(minQty) : null,
-      max_quantity: maxQty !== "" ? Number(maxQty) : null,
     });
     setSaving(false); setDirty(false); setShowAlert(false); onSaved?.(item.ingredient_name);
   };
@@ -599,8 +597,8 @@ function KitchenRow({ item, onRemove, onSaved, units }) {
         </select>
         <button onClick={() => setShowAlert((v) => !v)}
           className={`text-xs px-2 py-1 rounded-lg border transition-all ${showAlert ? "bg-amber-100 border-amber-300 text-amber-700" : "border-slate-200 text-slate-400 hover:text-amber-600 hover:border-amber-300"}`}
-          title="Set stock alert">
-          🔔 {item.min_quantity != null ? `≤ ${parseFloat(item.min_quantity)}` : "Alert"}
+          title="Set low-stock alert">
+          🔔 {item.min_quantity != null ? `alert ≤ ${parseFloat(item.min_quantity)}` : "Set alert"}
         </button>
         {dirty && (
           <button onClick={save} disabled={saving}
@@ -622,16 +620,7 @@ function KitchenRow({ item, onRemove, onSaved, units }) {
               onChange={(e) => { setMinQty(e.target.value); setDirty(true); }}
               className="w-16 p-1.5 border border-amber-200 rounded-lg bg-white ml-1" />
           </label>
-          <label className="flex items-center gap-1 text-xs text-slate-600">
-            Restock to
-            <input type="number" step="0.1" value={maxQty}
-              placeholder="max"
-              onChange={(e) => { setMaxQty(e.target.value); setDirty(true); }}
-              className="w-16 p-1.5 border border-amber-200 rounded-lg bg-white ml-1" />
-          </label>
-          <span className="text-xs text-slate-400">
-            (same unit as above)
-          </span>
+          <span className="text-xs text-slate-400">(same unit as above)</span>
         </div>
       )}
     </li>

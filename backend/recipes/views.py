@@ -1,3 +1,4 @@
+from django.db import models
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
@@ -158,6 +159,23 @@ class PantryItemViewSet(viewsets.ModelViewSet):
         serializer.save(owner=request.user)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def low_stock(request):
+    """
+    GET /api/pantry/low-stock/
+    Returns pantry items where quantity <= min_quantity (and min_quantity is set).
+    """
+    items = PantryItem.objects.select_related('ingredient', 'unit').filter(
+        owner=request.user,
+        min_quantity__isnull=False,
+        quantity__isnull=False,
+        quantity__lte=models.F('min_quantity'),
+    )
+    serializer = PantryItemSerializer(items, many=True, context={'request': request})
+    return Response(serializer.data)
 
 
 # ---------------------------------------------------------------------------

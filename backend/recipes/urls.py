@@ -24,6 +24,9 @@ urlpatterns = [
     path('suggestions/', views.suggestions, name='suggestions'),
     path('shopping-list/', views.shopping_list, name='shopping-list'),
 
+    # Pantry low-stock alert
+    path('pantry/low-stock/', views.low_stock, name='pantry-low-stock'),
+
     # Backward-compat with the original App.jsx
     path('cook-now/', views.cook_now, name='cook-now'),
     path('recipes-detail/<int:pk>/', views.recipe_detail, name='recipe-detail-legacy'),

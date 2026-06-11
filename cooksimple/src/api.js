@@ -75,10 +75,11 @@ export const uploadRecipeImage = async (id, file) => {
 export const listUnits = () => get(`/units/`);
 
 // Pantry
-export const listPantry      = ()         => get(`/pantry/`);
-export const addPantryItem   = (data)     => post(`/pantry/`, data);
+export const listPantry       = ()         => get(`/pantry/`);
+export const addPantryItem    = (data)     => post(`/pantry/`, data);
 export const updatePantryItem = (id, data) => put(`/pantry/${id}/`, data);
-export const deletePantryItem = (id)      => del(`/pantry/${id}/`);
+export const deletePantryItem = (id)       => del(`/pantry/${id}/`);
+export const getLowStock      = ()         => get(`/pantry/low-stock/`);
 
 // Suggestions
 export const getSuggestions = (params = {}) => get(`/suggestions/${qs(params)}`);

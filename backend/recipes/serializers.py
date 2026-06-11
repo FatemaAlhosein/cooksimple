@@ -174,13 +174,15 @@ class PantryItemSerializer(serializers.ModelSerializer):
 
     ingredient_input = serializers.CharField(write_only=True, required=False)
     unit_input = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    is_low_stock = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = PantryItem
         fields = [
             'id', 'ingredient', 'ingredient_name', 'ingredient_input',
             'location', 'quantity', 'unit', 'unit_name', 'unit_symbol',
-            'unit_input', 'updated_at',
+            'unit_input', 'min_quantity', 'max_quantity', 'is_low_stock',
+            'updated_at',
         ]
         extra_kwargs = {
             'ingredient': {'required': False},

@@ -3,6 +3,7 @@ import {
   addPantryItem,
   buildShoppingList,
   deletePantryItem,
+  getLowStock,
   getSuggestions,
   listPantry,
   listRecipes,
@@ -424,13 +425,17 @@ const LOCATIONS = [
 ];
 
 function KitchenTab({ refreshKey, onChanged, toast }) {
-  const [items, setItems]     = useState([]);
-  const [units, setUnits]     = useState([]);
-  const [error, setError]     = useState(null);
-  const [confirm, setConfirm] = useState(null);
-  const [form, setForm]       = useState({ ingredient_input: "", quantity: 1, unit_id: "", location: "pantry" });
+  const [items, setItems]         = useState([]);
+  const [units, setUnits]         = useState([]);
+  const [lowStock, setLowStock]   = useState([]);
+  const [error, setError]         = useState(null);
+  const [confirm, setConfirm]     = useState(null);
+  const [form, setForm]           = useState({ ingredient_input: "", quantity: 1, unit_id: "", location: "pantry" });
 
-  const load = () => listPantry().then((d) => setItems(d.results || d)).catch((e) => setError(e.message));
+  const load = () => {
+    listPantry().then((d) => setItems(d.results || d)).catch((e) => setError(e.message));
+    getLowStock().then((d) => setLowStock(d.results || d)).catch(() => {});
+  };
 
   useEffect(() => {
     load();
@@ -473,6 +478,28 @@ function KitchenTab({ refreshKey, onChanged, toast }) {
   return (
     <div className="space-y-6">
       {confirm && <ConfirmModal message={`Remove ${confirm.ingredient_name} from your kitchen?`} onConfirm={doRemove} onCancel={() => setConfirm(null)} />}
+
+      {/* Low-stock alert banner */}
+      {lowStock.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xl">⚠️</span>
+            <h3 className="font-bold text-amber-800">
+              {lowStock.length} item{lowStock.length > 1 ? "s" : ""} running low
+            </h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {lowStock.map((it) => (
+              <span key={it.id} className="bg-amber-100 text-amber-800 text-sm px-3 py-1 rounded-full flex items-center gap-1">
+                <span className="font-medium">{it.ingredient_name}</span>
+                <span className="text-amber-600 text-xs">
+                  {parseFloat(it.quantity)} / {parseFloat(it.min_quantity)} {it.unit_symbol}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Drag-and-drop ingredient grid */}
       <IngredientGrid onAdded={() => { load(); onChanged?.(); }} toast={toast} />
@@ -524,14 +551,19 @@ function KitchenSection({ location, items, onRemove, onSaved, units }) {
 }
 
 function KitchenRow({ item, onRemove, onSaved, units }) {
-  const [qty, setQty]     = useState(item.quantity != null ? parseFloat(item.quantity) : "");
+  const [qty, setQty]       = useState(item.quantity != null ? parseFloat(item.quantity) : "");
+  const [minQty, setMinQty] = useState(item.min_quantity != null ? parseFloat(item.min_quantity) : "");
+  const [maxQty, setMaxQty] = useState(item.max_quantity != null ? parseFloat(item.max_quantity) : "");
   const [unitId, setUnitId] = useState(() => {
     const match = units.find((u) => u.name === item.unit_name || u.symbol === item.unit_symbol);
     return match ? String(match.id) : (units[0] ? String(units[0].id) : "");
   });
-  const [loc, setLoc]     = useState(item.location || "pantry");
-  const [dirty, setDirty] = useState(false);
+  const [loc, setLoc]       = useState(item.location || "pantry");
+  const [showAlert, setShowAlert] = useState(false);
+  const [dirty, setDirty]   = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const isLow = item.is_low_stock;
 
   const save = async () => {
     setSaving(true);
@@ -541,22 +573,67 @@ function KitchenRow({ item, onRemove, onSaved, units }) {
       quantity: Number(qty) || 0,
       unit_input: selectedUnit?.symbol || selectedUnit?.name || "",
       location: loc,
+      min_quantity: minQty !== "" ? Number(minQty) : null,
+      max_quantity: maxQty !== "" ? Number(maxQty) : null,
     });
-    setSaving(false); setDirty(false); onSaved?.(item.ingredient_name);
+    setSaving(false); setDirty(false); setShowAlert(false); onSaved?.(item.ingredient_name);
   };
 
   return (
-    <li className="py-3 flex items-center gap-3 flex-wrap">
-      <span className="font-medium flex-1 min-w-[140px]">{item.ingredient_name}</span>
-      <input type="number" step="0.1" value={qty} onChange={(e) => { setQty(e.target.value); setDirty(true); }} className="w-20 p-2 border border-slate-200 rounded-lg bg-white" />
-      <select value={unitId} onChange={(e) => { setUnitId(e.target.value); setDirty(true); }} className="p-2 border border-slate-200 rounded-lg bg-white text-sm">
-        {units.map((u) => <option key={u.id} value={u.id}>{u.symbol} — {u.name}</option>)}
-      </select>
-      <select value={loc} onChange={(e) => { setLoc(e.target.value); setDirty(true); }} className="p-2 border border-slate-200 rounded-lg bg-white text-sm">
-        {LOCATIONS.map((l) => <option key={l.key} value={l.key}>{l.icon} {l.label}</option>)}
-      </select>
-      {dirty && <button onClick={save} disabled={saving} className="text-blue-600 font-medium hover:bg-blue-50 px-3 py-1 rounded-lg">{saving ? "..." : "Save"}</button>}
-      <button onClick={() => onRemove(item)} className="text-red-500 hover:bg-red-50 px-3 py-1 rounded-lg">Remove</button>
+    <li className={`py-3 border-t border-slate-100 ${isLow ? "bg-amber-50/50" : ""}`}>
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="font-medium flex-1 min-w-[140px] flex items-center gap-1">
+          {isLow && <span title="Low stock">⚠️</span>}
+          {item.ingredient_name}
+        </span>
+        <input type="number" step="0.1" value={qty}
+          onChange={(e) => { setQty(e.target.value); setDirty(true); }}
+          className="w-20 p-2 border border-slate-200 rounded-lg bg-white" />
+        <select value={unitId} onChange={(e) => { setUnitId(e.target.value); setDirty(true); }}
+          className="p-2 border border-slate-200 rounded-lg bg-white text-sm">
+          {units.map((u) => <option key={u.id} value={u.id}>{u.symbol} — {u.name}</option>)}
+        </select>
+        <select value={loc} onChange={(e) => { setLoc(e.target.value); setDirty(true); }}
+          className="p-2 border border-slate-200 rounded-lg bg-white text-sm">
+          {LOCATIONS.map((l) => <option key={l.key} value={l.key}>{l.icon} {l.label}</option>)}
+        </select>
+        <button onClick={() => setShowAlert((v) => !v)}
+          className={`text-xs px-2 py-1 rounded-lg border transition-all ${showAlert ? "bg-amber-100 border-amber-300 text-amber-700" : "border-slate-200 text-slate-400 hover:text-amber-600 hover:border-amber-300"}`}
+          title="Set stock alert">
+          🔔 {item.min_quantity != null ? `≤ ${parseFloat(item.min_quantity)}` : "Alert"}
+        </button>
+        {dirty && (
+          <button onClick={save} disabled={saving}
+            className="text-blue-600 font-medium hover:bg-blue-50 px-3 py-1 rounded-lg">
+            {saving ? "…" : "Save"}
+          </button>
+        )}
+        <button onClick={() => onRemove(item)} className="text-red-500 hover:bg-red-50 px-3 py-1 rounded-lg">Remove</button>
+      </div>
+
+      {/* Alert threshold panel */}
+      {showAlert && (
+        <div className="mt-2 ml-2 flex items-center gap-3 flex-wrap bg-amber-50 rounded-xl p-3 border border-amber-100">
+          <span className="text-xs text-amber-700 font-medium">Stock alert</span>
+          <label className="flex items-center gap-1 text-xs text-slate-600">
+            Alert below
+            <input type="number" step="0.1" value={minQty}
+              placeholder="min"
+              onChange={(e) => { setMinQty(e.target.value); setDirty(true); }}
+              className="w-16 p-1.5 border border-amber-200 rounded-lg bg-white ml-1" />
+          </label>
+          <label className="flex items-center gap-1 text-xs text-slate-600">
+            Restock to
+            <input type="number" step="0.1" value={maxQty}
+              placeholder="max"
+              onChange={(e) => { setMaxQty(e.target.value); setDirty(true); }}
+              className="w-16 p-1.5 border border-amber-200 rounded-lg bg-white ml-1" />
+          </label>
+          <span className="text-xs text-slate-400">
+            (same unit as above)
+          </span>
+        </div>
+      )}
     </li>
   );
 }

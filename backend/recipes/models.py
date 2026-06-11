@@ -130,11 +130,27 @@ class PantryItem(models.Model):
     owner = models.ForeignKey(
         User, on_delete=models.CASCADE, null=True, blank=True, related_name='pantry_items'
     )
+    # Stock threshold — user-defined. When quantity <= min_quantity the item is "low".
+    min_quantity = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Alert threshold: quantity at or below this is considered low stock."
+    )
+    max_quantity = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Normal full stock level (used as the restock-to target)."
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['location', 'ingredient__name']
         unique_together = [('ingredient', 'location', 'owner')]
+
+    @property
+    def is_low_stock(self):
+        """True when a minimum threshold is set and current quantity is at or below it."""
+        if self.min_quantity is None or self.quantity is None:
+            return False
+        return self.quantity <= self.min_quantity
 
     def __str__(self):
         unit = self.unit.symbol if self.unit else ''

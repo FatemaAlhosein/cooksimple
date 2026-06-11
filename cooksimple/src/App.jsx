@@ -14,6 +14,7 @@ import { useAuth } from "./AuthContext.jsx";
 import Filters from "./components/Filters.jsx";
 import IngredientGrid from "./components/IngredientGrid.jsx";
 import AddRecipeForm from "./components/AddRecipeForm.jsx";
+import PlannerTab from "./components/PlannerTab.jsx";
 import RecipeModal from "./components/RecipeModal.jsx";
 
 /* ── Unit sort order ────────────────────────────────────────────────────────── */
@@ -213,7 +214,7 @@ export default function App() {
           </h1>
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex bg-slate-100 rounded-full p-1 border border-slate-200">
-              {[["cook","Cook"],["kitchen","Kitchen"],["recipes","Recipes"]].map(([t, label]) => (
+              {[["cook","Cook"],["kitchen","Kitchen"],["planner","Planner"],["recipes","Recipes"]].map(([t, label]) => (
                 <button key={t}
                   onClick={() => t === "kitchen" ? goKitchen() : setTab(t)}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${tab === t ? "bg-white shadow-sm text-blue-600" : "text-slate-500 hover:text-slate-700"}`}>
@@ -245,6 +246,15 @@ export default function App() {
 
       <main className="max-w-5xl mx-auto p-6">
         {tab === "cook"    && <CookTab onOpenRecipe={setSelectedId} refreshKey={refreshKey} onGoKitchen={goKitchen} toast={toast} />}
+        {tab === "planner" && (user
+          ? <PlannerTab toast={toast} />
+          : <div className="text-center py-24 text-slate-500">
+              <p className="text-4xl mb-4">📅</p>
+              <p className="text-lg font-medium mb-2">Plan your week</p>
+              <p className="text-sm mb-6">Log in to build your weekly meal plan and generate a shopping list.</p>
+              <button onClick={() => setShowAuth(true)} className="px-6 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700">Log in or Register</button>
+            </div>
+        )}
         {tab === "kitchen" && (user
           ? <KitchenTab refreshKey={refreshKey} onChanged={refresh} toast={toast} />
           : <div className="text-center py-24 text-slate-500">

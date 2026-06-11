@@ -87,6 +87,12 @@ export const getSuggestions = (params = {}) => get(`/suggestions/${qs(params)}`)
 // Shopping list
 export const buildShoppingList = (recipe_ids) => post(`/shopping-list/`, { recipe_ids });
 
+// Meal Planner
+export const getWeekPlan           = (week)             => get(`/planner/${week ? `?week=${week}` : ''}`);
+export const addMealEntry          = (data)             => post(`/planner/entries/`, data);
+export const removeMealEntry       = (id)               => del(`/planner/entries/${id}/`);
+export const getPlannerShoppingList = (week)            => get(`/planner/shopping-list/${week ? `?week=${week}` : ''}`);
+
 // Backward-compat
 export const cookNow           = (ingredients) => post(`/cook-now/`, { ingredients });
 export const recipeDetailLegacy = (id)         => get(`/recipes-detail/${id}/`);

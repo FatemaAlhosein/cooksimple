@@ -27,6 +27,12 @@ urlpatterns = [
     # Pantry low-stock alert
     path('pantry/low-stock/', views.low_stock, name='pantry-low-stock'),
 
+    # Meal planner
+    path('planner/',                        views.week_plan,             name='planner-week'),
+    path('planner/entries/',                views.add_meal_entry,        name='planner-add-entry'),
+    path('planner/entries/<int:entry_id>/', views.remove_meal_entry,     name='planner-remove-entry'),
+    path('planner/shopping-list/',          views.planner_shopping_list, name='planner-shopping-list'),
+
     # Backward-compat with the original App.jsx
     path('cook-now/', views.cook_now, name='cook-now'),
     path('recipes-detail/<int:pk>/', views.recipe_detail, name='recipe-detail-legacy'),

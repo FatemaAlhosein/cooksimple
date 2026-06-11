@@ -4,13 +4,15 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
 from rest_framework.response import Response
 
-from .models import Ingredient, PantryItem, Recipe, Unit
+from .models import Ingredient, MealPlanEntry, PantryItem, Recipe, Unit, WeekPlan
 from .serializers import (
     IngredientSerializer,
+    MealPlanEntrySerializer,
     PantryItemSerializer,
     RecipeDetailSerializer,
     RecipeListSerializer,
     UnitSerializer,
+    WeekPlanSerializer,
 )
 from .suggest import shopping_list_for_recipes, suggest_recipes
 
@@ -309,3 +311,107 @@ def recipe_detail(request, pk):
         'ingredients': ingred_list,
         'steps': step_list,
     })
+
+
+# ---------------------------------------------------------------------------
+# Meal Planner endpoints
+# ---------------------------------------------------------------------------
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def week_plan(request):
+    """
+    GET /api/planner/?week=YYYY-MM-DD
+    Returns (or creates) the WeekPlan for the given Monday, with all entries.
+    `week` defaults to the current Monday if omitted.
+    """
+    from datetime import date, timedelta
+
+    week_str = request.query_params.get('week')
+    if week_str:
+        try:
+            from datetime import datetime
+            week_start = datetime.strptime(week_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'detail': 'Invalid date format. Use YYYY-MM-DD.'}, status=400)
+    else:
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())   # this Monday
+
+    plan, _ = WeekPlan.objects.get_or_create(owner=request.user, week_start=week_start)
+    serializer = WeekPlanSerializer(plan, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_meal_entry(request):
+    """
+    POST /api/planner/entries/
+    Body: { week_start, day, slot, recipe }
+    Adds a recipe to the planner. Duplicate (same day+slot+recipe) is silently ignored.
+    """
+    from datetime import datetime
+
+    week_str = request.data.get('week_start')
+    try:
+        week_start = datetime.strptime(week_str, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return Response({'detail': 'Provide week_start as YYYY-MM-DD.'}, status=400)
+
+    plan, _ = WeekPlan.objects.get_or_create(owner=request.user, week_start=week_start)
+
+    serializer = MealPlanEntrySerializer(data=request.data, context={'request': request})
+    serializer.is_valid(raise_exception=True)
+
+    entry, created = MealPlanEntry.objects.get_or_create(
+        plan=plan,
+        day=serializer.validated_data['day'],
+        slot=serializer.validated_data['slot'],
+        recipe=serializer.validated_data['recipe'],
+    )
+    out = MealPlanEntrySerializer(entry, context={'request': request})
+    return Response(out.data, status=201 if created else 200)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def remove_meal_entry(request, entry_id):
+    """DELETE /api/planner/entries/<id>/"""
+    entry = MealPlanEntry.objects.filter(id=entry_id, plan__owner=request.user).first()
+    if not entry:
+        return Response({'detail': 'Not found.'}, status=404)
+    entry.delete()
+    return Response(status=204)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def planner_shopping_list(request):
+    """
+    GET /api/planner/shopping-list/?week=YYYY-MM-DD
+    Returns the combined missing-ingredient list for all recipes in the week plan.
+    """
+    from datetime import date, timedelta, datetime
+
+    week_str = request.query_params.get('week')
+    if week_str:
+        try:
+            week_start = datetime.strptime(week_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'detail': 'Invalid date. Use YYYY-MM-DD.'}, status=400)
+    else:
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+
+    try:
+        plan = WeekPlan.objects.get(owner=request.user, week_start=week_start)
+    except WeekPlan.DoesNotExist:
+        return Response([])
+
+    recipe_ids = list(plan.entries.values_list('recipe_id', flat=True).distinct())
+    if not recipe_ids:
+        return Response([])
+
+    shopping = shopping_list_for_recipes(recipe_ids, request.user)
+    return Response(shopping)

@@ -157,6 +157,48 @@ class PantryItem(models.Model):
         return f"{self.ingredient.name} ({self.location}): {self.quantity or ''} {unit}".strip()
 
 
+# ── Weekly Meal Planner ────────────────────────────────────────────────────────
+
+class WeekPlan(models.Model):
+    """One plan per user per week (identified by the Monday date of that week)."""
+    owner      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='week_plans')
+    week_start = models.DateField(help_text="Monday of the planned week.")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('owner', 'week_start')]
+        ordering = ['-week_start']
+
+    def __str__(self):
+        return f"{self.owner.username} — week of {self.week_start}"
+
+
+class MealPlanEntry(models.Model):
+    """A single recipe slotted into a day + meal of a WeekPlan."""
+    SLOT_BREAKFAST = 'breakfast'
+    SLOT_LUNCH     = 'lunch'
+    SLOT_DINNER    = 'dinner'
+    SLOT_SNACK     = 'snack'
+    SLOT_CHOICES = [
+        (SLOT_BREAKFAST, 'Breakfast'),
+        (SLOT_LUNCH,     'Lunch'),
+        (SLOT_DINNER,    'Dinner'),
+        (SLOT_SNACK,     'Snack'),
+    ]
+
+    plan   = models.ForeignKey(WeekPlan, on_delete=models.CASCADE, related_name='entries')
+    day    = models.SmallIntegerField(help_text="0=Mon … 6=Sun")
+    slot   = models.CharField(max_length=12, choices=SLOT_CHOICES, default=SLOT_DINNER)
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='meal_entries')
+
+    class Meta:
+        ordering = ['day', 'slot']
+
+    def __str__(self):
+        days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+        return f"{days[self.day]} {self.slot}: {self.recipe.name}"
+
+
 # 1. Basic Keyword Search. A common goal is to find any recipe whose name or ingredient list contains a specific keyword (like "chicken").
 def search_recipes(keyword):
     #  use the class directly since it's defined above in the same file

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from PIL import Image as PilImage
 
-from .models import Ingredient, PantryItem, Recipe, RecipeIngredient, Step, Unit
+from .models import Ingredient, MealPlanEntry, PantryItem, Recipe, RecipeIngredient, Step, Unit, WeekPlan
 
 ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 MAX_IMAGE_SIZE_MB   = 5
@@ -214,3 +214,29 @@ class PantryItemSerializer(serializers.ModelSerializer):
                 {'ingredient': 'Provide ingredient id or ingredient_input.'}
             )
         return attrs
+
+
+# ── Meal Planner ──────────────────────────────────────────────────────────────
+
+class MealPlanEntrySerializer(serializers.ModelSerializer):
+    recipe_name  = serializers.CharField(source='recipe.name', read_only=True)
+    recipe_image = serializers.SerializerMethodField()
+    recipe_time  = serializers.IntegerField(source='recipe.total_time_minutes', read_only=True)
+
+    class Meta:
+        model  = MealPlanEntry
+        fields = ['id', 'day', 'slot', 'recipe', 'recipe_name', 'recipe_image', 'recipe_time']
+
+    def get_recipe_image(self, obj):
+        request = self.context.get('request')
+        if obj.recipe.image:
+            return request.build_absolute_uri(obj.recipe.image.url) if request else obj.recipe.image.url
+        return getattr(obj.recipe, 'image_url', None)
+
+
+class WeekPlanSerializer(serializers.ModelSerializer):
+    entries = MealPlanEntrySerializer(many=True, read_only=True)
+
+    class Meta:
+        model  = WeekPlan
+        fields = ['id', 'week_start', 'entries']
